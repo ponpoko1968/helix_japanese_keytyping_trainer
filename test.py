@@ -84,8 +84,8 @@ class Trainer:
             if ord(ch) == curses.ascii.BEL:
                 break
             prev_char=question[pos % len(question)]
-            self.win.addch(info.row,left_margin+info.col*2,question[pos % len(question)], curses.A_REVERSE)
-            self.win.addch(8, left_margin + pos*2, question[pos % len(question)])
+            self.win.addch(info.row,left_margin+info.col*2, now_char, curses.A_REVERSE)
+            self.win.addch(8, left_margin + pos*2, now_char)
             self.win.addch(8, left_margin + (pos+1)*2, question[(pos+1) % len(question)],curses.A_REVERSE)
 
             if now_char == ch:
