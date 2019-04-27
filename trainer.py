@@ -3,9 +3,13 @@ from datetime import datetime
 import argparse
 import curses
 import curses.ascii
+import json
 import locale
 import logging
 import logging.handlers
+from pathlib import Path
+import os
+import sys
 import random
 
 CharInfo = namedtuple('CharInfo', ('row', 'left_right', 'shift', 'col'))
@@ -262,7 +266,16 @@ class Trainer:
         session_ended = datetime.now()
         time_diff = (session_ended - session_started)
         elapsed = (float(time_diff.seconds)+float(time_diff.microseconds)/1000000.0)
-        return 0, {'char_stats':char_stats, 'elapsed':elapsed,"count":char_count, 'missed':missed_count}
+        result = {'char_stats':char_stats,
+                  'elapsed':elapsed,
+                  'count':char_count,
+                  'missed':missed_count}
+        result['started'] = str(session_started)
+        result['ended'] = str(session_ended)
+        result['conditions'] = {'steps':{'upper':self.args.upper, 'middle':self.args.middle, 'lower':self.args.lower},
+                                'shifts':{'normal':self.args.normal_shift,'cross':self.args.cross_shift} }
+
+        return 0, result
 
 def parse_args(parser):
     parser.add_argument('-u', '--upper', dest='upper', action='store_true',
@@ -336,6 +349,17 @@ if __name__ == '__main__':
         if code < 0:
             print(msg)
             exit(code)
-        print(msg)
+
+        path =  Path(args.out_dir)
+
+        if path.exists() and path.is_dir() :
+            filename = datetime.now().strftime('%Y-%m-%d_%H-%M-%S') + ".json"
+            file_path = os.path.join(args.out_dir, filename)
+            with open(file_path,'w') as file:
+                json.dump(msg, file)
+        else:
+            print("{file} not exists".format(file=args.out_dir), file=sys.stderr)
+
+        print(json.dumps(msg, indent=4, ensure_ascii=False))
 
     main()
