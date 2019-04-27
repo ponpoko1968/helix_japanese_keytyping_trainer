@@ -118,7 +118,8 @@ class Trainer:
         for h in hands:
             for i in range(0, len(steps)):
                 if steps[i]:
-                    candidates = candidates + "".join([c for c in char_set[i][h][0] if c != '　'])
+                    if not self.args.no_shift:
+                        candidates = candidates + "".join([c for c in char_set[i][h][0] if c != '　'])
                     if self.args.normal_shift:
                         candidates = candidates + "".join([c for c in char_set[i][h][1] if c != '　'])
                     if self.args.cross_shift:
@@ -133,6 +134,14 @@ class Trainer:
         if target_char in char_map:
             info = char_map[target_char]
             shift_state = info.shift
+
+        if shift_state == 1:
+            color = curses.color_pair(2)
+        elif shift_state == 2:
+            color = curses.color_pair(1)
+        else:
+            color = curses.color_pair(0)
+
         # 左
         for col in range(0, KEY_N_COL):
             for row in range(0, KEY_N_ROW-1):
@@ -144,7 +153,7 @@ class Trainer:
         for col in range(0, KEY_N_COL):
             for row in range(0, KEY_N_ROW-1):
                 (y_1, x_1) = (row*KEY_HEIGHT+1, col*KEY_WIDTH+1)
-                self.kbd_win.addch(y_1, x_1, display_char if self.args.blind_mode else char_set[row][0][shift_state][col])
+                self.kbd_win.addstr(y_1, x_1, display_char if self.args.blind_mode else char_set[row][0][shift_state][col],color)
 
         # 右
         for col in range(0, KEY_N_COL+1):
@@ -183,13 +192,13 @@ class Trainer:
             for col in col_range:
                 (y, x) = (row*KEY_HEIGHT+1, KEY_N_COL*KEY_WIDTH+KBD_CENTER_WIDTH+col*KEY_WIDTH+1)
                 char = display_char if self.args.blind_mode else char_set[row][1][shift_state][col]
-                self.kbd_win.addch(y, x, char)
+                self.kbd_win.addstr(y, x, char, color)
 
-        if not self.args.no_hilight and target_char in char_map:
+        if  self.args.hilight and target_char in char_map:
             info = char_map[target_char]
             x = (KEY_N_COL*KEY_WIDTH+KBD_CENTER_WIDTH)*info.left_right + info.col*KEY_WIDTH + 1
             y = info.row*KEY_HEIGHT + 1
-            self.kbd_win.addch( y, x, display_char, curses.A_REVERSE)
+            self.kbd_win.addstr(y, x, display_char, curses.A_REVERSE|color)
 
 
     def generate_question(self):
@@ -249,17 +258,21 @@ class Trainer:
                 curses.beep()
                 missed_count += 1
                 missed = 1
-                self.win.addch(ANSWER_ROW, pos*2, ch, curses.A_REVERSE)
+                #self.win.addch(ANSWER_ROW, pos*2, ch,  curses.A_REVERSE)
+                #self.win.addch(ANSWER_ROW, pos*2, ch,  curses.COLOR_RED)
+                self.win.addstr(ANSWER_ROW, pos*2, ch,  curses.color_pair(1))
 
             pos += 1
             self.win.refresh()
             time_diff = (char_ended - char_started)
-            elapsed = (float(time_diff.seconds)+float(time_diff.microseconds)/1000000.0)
-            chars_per_sec = elapsed  / float(char_count)
+            time_diff_from_start = (char_ended - session_started)
+            char_elapsed = (float(time_diff.seconds)+float(time_diff.microseconds)/1000000.0)
+            total_elapsed = (float(time_diff_from_start.seconds)+float(time_diff_from_start.microseconds)/1000000.0)
+            chars_per_sec = total_elapsed  / float(char_count)
             cs = char_stats[now_char]
             char_stats[now_char] = CharStat(occur=cs.occur+1,
                                             missed=cs.missed+missed,
-                                            elapsed=cs.elapsed+elapsed)
+                                            elapsed=cs.elapsed+char_elapsed)
             self.win.addstr(ANSWER_ROW+2, 0,"AVG={:04.2f}".format(chars_per_sec))
             self.win.addstr(ANSWER_ROW+3, 0,"MISS={:n}".format(missed_count))
 
@@ -293,6 +306,9 @@ def parse_args(parser):
     parser.add_argument('-N', '--enable-normal-shift', dest='normal_shift', action='store_true',
                         default=False,
                         help='正シフトの音を追加')
+    parser.add_argument('-D', '--disable-no-shift', dest='no_shift', action='store_true',
+                        default=False,
+                        help='シフトなしの音を追加しない')
     parser.add_argument('-X', '--enable-cross-shift', dest='cross_shift', action='store_true',
                         default=False,
                         help='クロスシフトの音を追加')
@@ -308,8 +324,8 @@ def parse_args(parser):
                         help='単語モード')
     parser.add_argument('-b', '--blind', dest='blind_mode', action='store_true', default=False,
                         help='キーボードに音を表示しない')
-    parser.add_argument( '--no-hilight', dest='no_hilight', action='store_true', default=True,
-                        help='キーボードに音を表示しない')
+    parser.add_argument( '--hilight', dest='hilight', action='store_true', default=False,
+                        help='キーボードに対象をハイライト表示する')
 
     return (parser, parser.parse_args())
 
@@ -327,6 +343,13 @@ if __name__ == '__main__':
 
         if width < KEY_N_COL*KEY_WIDTH*2+KBD_CENTER_WIDTH:
             return -1, "screen width too small"
+        curses.curs_set(0)
+        curses.start_color()
+        curses.init_color(1, 1000, 500, 500)
+        curses.init_pair(1, 1, curses.COLOR_BLACK)
+
+        curses.init_color(2, 500, 500, 1000)
+        curses.init_pair(2, 2, curses.COLOR_BLACK)
 
         stdscr.refresh()
 
@@ -341,11 +364,18 @@ if __name__ == '__main__':
         if (args.upper or args.middle or args.lower) == False:
             parser.print_help()
             exit(-1)
+
+        # save_colors = [curses.color_content(i) for i in range(curses.COLORS)]
+
         try:
             code, msg = curses.wrapper(winmain, args)
         except Exception as exp:
             print(exp)
             exit(-1)
+
+        # for i in range(curses.COLORS):
+        #     curses.init_color(i, *save_colors[i])
+
         if code < 0:
             print(msg)
             exit(code)
