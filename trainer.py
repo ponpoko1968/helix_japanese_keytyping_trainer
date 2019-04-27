@@ -121,7 +121,7 @@ class Trainer:
 
     def draw_keyboard(self, target_char):
         shift_state = 0
-        
+
         display_char = '　' if self.args.blind_mode else target_char
 
         if target_char in char_map:
@@ -179,7 +179,7 @@ class Trainer:
                 char = display_char if self.args.blind_mode else char_set[row][1][shift_state][col]
                 self.kbd_win.addch(y, x, char)
 
-        if target_char in char_map:
+        if not self.args.no_hilight and target_char in char_map:
             info = char_map[target_char]
             x = (KEY_N_COL*KEY_WIDTH+KBD_CENTER_WIDTH)*info.left_right + info.col*KEY_WIDTH + 1
             y = info.row*KEY_HEIGHT + 1
@@ -253,23 +253,26 @@ def parse_args(parser):
 
     parser.add_argument('-H', '--hands', dest='hands', type=str, default='both', choices=['left', 'right', 'both'],
                         help='使用する手')
-    parser.add_argument('-N', '--enable_normal_shift', dest='normal_shift', action='store_true',
+    parser.add_argument('-N', '--enable-normal-shift', dest='normal_shift', action='store_true',
                         default=False,
                         help='正シフトの音を追加')
-    parser.add_argument('-X', '--enable_cross_shift', dest='cross_shift', action='store_true',
+    parser.add_argument('-X', '--enable-cross-shift', dest='cross_shift', action='store_true',
                         default=False,
                         help='クロスシフトの音を追加')
     parser.add_argument('-A', '--all-chars', dest='all_chars', action='store_true', default=False,
                         help='すべての音を追加')
-    parser.add_argument('-n', '--number_words', dest='n_words', type=int, default=10,
+    parser.add_argument('-n', '--number-words', dest='n_words', type=int, default=10,
                         help='練習する語数')
-    parser.add_argument('-o', '--output_dir', dest='out_dir', type=str, default='./logs',
+    parser.add_argument('-o', '--output-dir', dest='out_dir', type=str, default='./logs',
                         help='ログの出力先')
-    parser.add_argument('-f', '--word_file', dest='word_file', type=str, default='words.txt',
+    parser.add_argument('-f', '--word-file', dest='word_file', type=str, default='words.txt',
                         help='単語ファイルのパス')
-    parser.add_argument('-w', '--word_mode', dest='word_mode', action='store_true',
+    parser.add_argument('-w', '--word-mode', dest='word_mode', action='store_true',
                         help='単語モード')
-    parser.add_argument('-b', '--blind', dest='blind_mode', action='store_true', default=True,
+    parser.add_argument('-b', '--blind', dest='blind_mode', action='store_true', default=False,
+                        help='キーボードに音を表示しない')
+
+    parser.add_argument( '--no-hilight', dest='no_hilight', action='store_true', default=True,
                         help='キーボードに音を表示しない')
 
     return (parser, parser.parse_args())
