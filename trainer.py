@@ -205,7 +205,7 @@ class Trainer:
         question = self.generate_question()
         for i, char in enumerate(question):
             self.win.addch(QUESTION_ROW, i*2, char)
-        started = datetime.now()
+        session_started = datetime.now()
         missed_count = 0
         char_stats = dict()
         while True:
@@ -227,9 +227,9 @@ class Trainer:
                 char_stats[now_char] = CharStat(occur=0, missed=0, elapsed=0.0)
             self.draw_keyboard(now_char)
             self.kbd_win.refresh()
-
+            char_started = datetime.now()
             ch = self.win.get_wch(ANSWER_ROW, pos*2)
-
+            char_ended = datetime.now()
             if isinstance(ch, int):
                 continue
             if ch == curses.ascii.BS:
@@ -249,9 +249,8 @@ class Trainer:
 
             pos += 1
             self.win.refresh()
-            ended = datetime.now()
-            time_diff = (ended - started)
-            elapsed = (float(time_diff.seconds)+float(time_diff.microseconds))/1000000.0
+            time_diff = (char_ended - char_started)
+            elapsed = (float(time_diff.seconds)+float(time_diff.microseconds)/1000000.0)
             chars_per_sec = elapsed  / float(char_count)
             cs = char_stats[now_char]
             char_stats[now_char] = CharStat(occur=cs.occur+1,
@@ -260,9 +259,9 @@ class Trainer:
             self.win.addstr(ANSWER_ROW+2, 0,"AVG={:04.2f}".format(chars_per_sec))
             self.win.addstr(ANSWER_ROW+3, 0,"MISS={:n}".format(missed_count))
 
-        ended = datetime.now()
-        time_diff = (ended - started)
-        elapsed = (float(time_diff.seconds)+float(time_diff.microseconds))/1000000.0
+        session_ended = datetime.now()
+        time_diff = (session_ended - session_started)
+        elapsed = (float(time_diff.seconds)+float(time_diff.microseconds)/1000000.0)
         return 0, {'char_stats':char_stats, 'elapsed':elapsed,"count":char_count, 'missed':missed_count}
 
 def parse_args(parser):
