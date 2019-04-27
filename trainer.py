@@ -180,10 +180,10 @@ class Trainer:
             self.kbd_win.addch(l_y_1+1, l_x_1+1, '　', curses.A_NORMAL)
             self.kbd_win.addch(r_y_1+1, r_x_1+1, '　', curses.A_NORMAL)
         elif shift_state == 1:
-            self.kbd_win.addch(l_y_1+1, l_x_1+1, '　', curses.A_REVERSE)
+            self.kbd_win.addstr(l_y_1+1, l_x_1+1, '　', curses.A_REVERSE|color)
             self.kbd_win.addch(r_y_1+1, r_x_1+1, '　', curses.A_NORMAL)
         elif shift_state == 2:
-            self.kbd_win.addch(r_y_1+1, r_x_1+1, '　', curses.A_REVERSE)
+            self.kbd_win.addstr(r_y_1+1, r_x_1+1, '　', curses.A_REVERSE|color)
             self.kbd_win.addch(l_y_1+1, l_x_1+1, '　', curses.A_NORMAL)
 
 
@@ -260,7 +260,7 @@ class Trainer:
                 missed = 1
                 #self.win.addch(ANSWER_ROW, pos*2, ch,  curses.A_REVERSE)
                 #self.win.addch(ANSWER_ROW, pos*2, ch,  curses.COLOR_RED)
-                self.win.addstr(ANSWER_ROW, pos*2, ch,  curses.color_pair(1))
+                self.win.addstr(ANSWER_ROW, pos*2, ch,  curses.color_pair(1)|curses.A_REVERSE)
 
             pos += 1
             self.win.refresh()
@@ -345,10 +345,10 @@ if __name__ == '__main__':
             return -1, "screen width too small"
         curses.curs_set(0)
         curses.start_color()
-        curses.init_color(1, 1000, 500, 500)
+        curses.init_color(1, 240*4, 175*4,0 )
         curses.init_pair(1, 1, curses.COLOR_BLACK)
 
-        curses.init_color(2, 500, 500, 1000)
+        curses.init_color(2, 0, 175*4, 240*4)
         curses.init_pair(2, 2, curses.COLOR_BLACK)
 
         stdscr.refresh()
