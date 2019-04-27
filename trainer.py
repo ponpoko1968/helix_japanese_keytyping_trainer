@@ -1,13 +1,15 @@
+from collections import namedtuple
+from datetime import datetime
 import argparse
 import curses
 import curses.ascii
 import locale
 import logging
 import logging.handlers
-from collections import namedtuple
 import random
 
 CharInfo = namedtuple('CharInfo', ('row', 'left_right', 'shift', 'col'))
+CharStat = namedtuple('CharStat', ('occur', 'missed', 'elapsed'))
 
 logger = logging.getLogger('MyLogger')
 logger.setLevel(logging.DEBUG)
@@ -198,11 +200,16 @@ class Trainer:
 
     def run(self):
         pos = 0
+        char_count = 0
         curses.noecho()
         question = self.generate_question()
         for i, char in enumerate(question):
             self.win.addch(QUESTION_ROW, i*2, char)
+        started = datetime.now()
+        missed_count = 0
+        char_stats = dict()
         while True:
+            char_count += 1
             if pos >= len(question):
                 pos = 0
                 (_, width) = self.win.getmaxyx()
@@ -216,6 +223,8 @@ class Trainer:
                     self.win.addch(ANSWER_ROW, i*2, '　')
                 continue
             now_char = question[pos]
+            if now_char not in char_stats:
+                char_stats[now_char] = CharStat(occur=0, missed=0, elapsed=0.0)
             self.draw_keyboard(now_char)
             self.kbd_win.refresh()
 
@@ -229,16 +238,32 @@ class Trainer:
                 break
 
             self.win.addch(QUESTION_ROW, pos*2, now_char)
-
+            missed = 0
             if now_char == ch:
                 self.win.addch(ANSWER_ROW, pos*2, ch)
             else:
                 curses.beep()
+                missed_count += 1
+                missed = 1
                 self.win.addch(ANSWER_ROW, pos*2, ch, curses.A_REVERSE)
 
             pos += 1
             self.win.refresh()
-        return 0, ''
+            ended = datetime.now()
+            time_diff = (ended - started)
+            elapsed = (float(time_diff.seconds)+float(time_diff.microseconds))/1000000.0
+            chars_per_sec = elapsed  / float(char_count)
+            cs = char_stats[now_char]
+            char_stats[now_char] = CharStat(occur=cs.occur+1,
+                                            missed=cs.missed+missed,
+                                            elapsed=cs.elapsed+elapsed)
+            self.win.addstr(ANSWER_ROW+2, 0,"AVG={:04.2f}".format(chars_per_sec))
+            self.win.addstr(ANSWER_ROW+3, 0,"MISS={:n}".format(missed_count))
+
+        ended = datetime.now()
+        time_diff = (ended - started)
+        elapsed = (float(time_diff.seconds)+float(time_diff.microseconds))/1000000.0
+        return 0, {'char_stats':char_stats, 'elapsed':elapsed,"count":char_count, 'missed':missed_count}
 
 def parse_args(parser):
     parser.add_argument('-u', '--upper', dest='upper', action='store_true',
@@ -271,7 +296,6 @@ def parse_args(parser):
                         help='単語モード')
     parser.add_argument('-b', '--blind', dest='blind_mode', action='store_true', default=False,
                         help='キーボードに音を表示しない')
-
     parser.add_argument( '--no-hilight', dest='no_hilight', action='store_true', default=True,
                         help='キーボードに音を表示しない')
 
@@ -313,4 +337,6 @@ if __name__ == '__main__':
         if code < 0:
             print(msg)
             exit(code)
+        print(msg)
+
     main()
