@@ -78,6 +78,20 @@ class Trainer:
         (_, width) = self.win.getmaxyx()
         self.kbd_win = curses.newwin(KBD_HEIGHT, KBD_WIDTH+KEY_WIDTH+1, 0, int(width/2)-int(KBD_WIDTH/2))
         self.candidates = self.build_candidate()
+        self.words = self.enumerate_words()
+
+    def enumerate_words(self):
+        words = []
+        import re
+        regex = re.compile('^[' + self.candidates + ']+$')
+        with open(self.args.word_file) as dic:
+            for line in dic:
+                line.strip()
+                m = regex.match(line)
+                if m:
+                    words.append(m.group(0))
+        return words
+
 
     def build_candidate(self):
         hands = []
@@ -107,6 +121,9 @@ class Trainer:
 
     def draw_keyboard(self, target_char):
         shift_state = 0
+        
+        display_char = '　' if self.args.blind_mode else target_char
+
         if target_char in char_map:
             info = char_map[target_char]
             shift_state = info.shift
@@ -121,7 +138,7 @@ class Trainer:
         for col in range(0, KEY_N_COL):
             for row in range(0, KEY_N_ROW-1):
                 (y_1, x_1) = (row*KEY_HEIGHT+1, col*KEY_WIDTH+1)
-                self.kbd_win.addch(y_1, x_1, char_set[row][0][shift_state][col])
+                self.kbd_win.addch(y_1, x_1, display_char if self.args.blind_mode else char_set[row][0][shift_state][col])
 
         # 右
         for col in range(0, KEY_N_COL+1):
@@ -159,33 +176,40 @@ class Trainer:
             col_range = range(0, KEY_N_COL+1) if row == 1 else range(0, KEY_N_COL)
             for col in col_range:
                 (y, x) = (row*KEY_HEIGHT+1, KEY_N_COL*KEY_WIDTH+KBD_CENTER_WIDTH+col*KEY_WIDTH+1)
-                char = char_set[row][1][shift_state][col]
+                char = display_char if self.args.blind_mode else char_set[row][1][shift_state][col]
                 self.kbd_win.addch(y, x, char)
 
         if target_char in char_map:
             info = char_map[target_char]
             x = (KEY_N_COL*KEY_WIDTH+KBD_CENTER_WIDTH)*info.left_right + info.col*KEY_WIDTH + 1
             y = info.row*KEY_HEIGHT + 1
-            self.kbd_win.addch( y, x, target_char, curses.A_REVERSE)
+            self.kbd_win.addch( y, x, display_char, curses.A_REVERSE)
 
 
     def generate_question(self):
-        (_, width) = self.win.getmaxyx()
-        question = ""
-        for _ in range(0, int(width/2) - 1):
-            question = question + random.choice(list(self.candidates))
-        return question
+        if self.args.word_mode:
+            return random.choice(list(self.words))
+        else:
+            (_, width) = self.win.getmaxyx()
+            question = ""
+            for _ in range(0, int(width/2) - 1):
+                question = question + random.choice(list(self.candidates))
+            return question
 
     def run(self):
         pos = 0
         curses.noecho()
-        logger.debug(self.candidates)
         question = self.generate_question()
         for i, char in enumerate(question):
             self.win.addch(QUESTION_ROW, i*2, char)
         while True:
             if pos >= len(question):
                 pos = 0
+                (_, width) = self.win.getmaxyx()
+                for col in range(0, width):
+                    self.win.addch(QUESTION_ROW, col, ' ')
+                    self.win.addch(ANSWER_ROW, col, ' ')
+
                 question = self.generate_question()
                 for i, char in enumerate(question):
                     self.win.addch(QUESTION_ROW, i*2, char)
@@ -241,6 +265,12 @@ def parse_args(parser):
                         help='練習する語数')
     parser.add_argument('-o', '--output_dir', dest='out_dir', type=str, default='./logs',
                         help='ログの出力先')
+    parser.add_argument('-f', '--word_file', dest='word_file', type=str, default='words.txt',
+                        help='単語ファイルのパス')
+    parser.add_argument('-w', '--word_mode', dest='word_mode', action='store_true',
+                        help='単語モード')
+    parser.add_argument('-b', '--blind', dest='blind_mode', action='store_true', default=True,
+                        help='キーボードに音を表示しない')
 
     return (parser, parser.parse_args())
 
@@ -248,7 +278,6 @@ def parse_args(parser):
 if __name__ == '__main__':
     def winmain(stdscr, args):
         '''
-        aa
         '''
         (height, width) = stdscr.getmaxyx()
         logger.debug("height,width")
@@ -261,6 +290,7 @@ if __name__ == '__main__':
             return -1, "screen width too small"
 
         stdscr.refresh()
+
         return Trainer(stdscr, args).run()
 
 
@@ -272,9 +302,11 @@ if __name__ == '__main__':
         if (args.upper or args.middle or args.lower) == False:
             parser.print_help()
             exit(-1)
-
-
-        code, msg = curses.wrapper(winmain, args)
+        try:
+            code, msg = curses.wrapper(winmain, args)
+        except Exception as exp:
+            print(exp)
+            exit(-1)
         if code < 0:
             print(msg)
             exit(code)
