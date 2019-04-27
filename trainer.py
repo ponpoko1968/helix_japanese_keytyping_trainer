@@ -66,7 +66,7 @@ KEY_N_ROW = 4
 
 KBD_CENTER_WIDTH = 3
 
-KBD_WIDTH = KEY_WIDTH*KEY_N_COL + KBD_CENTER_WIDTH + KEY_WIDTH*KEY_N_COL
+KBD_WIDTH = KEY_WIDTH*KEY_N_COL + KBD_CENTER_WIDTH + KEY_WIDTH*KEY_N_COL + 1
 KBD_HEIGHT = KEY_HEIGHT*KEY_N_ROW
 
 
@@ -76,7 +76,7 @@ class Trainer:
         self.win = win
         self.args = args
         (_, width) = self.win.getmaxyx()
-        self.kbd_win = curses.newwin(KBD_HEIGHT, KBD_WIDTH+1, 0, int(width/2)-int(KBD_WIDTH/2))
+        self.kbd_win = curses.newwin(KBD_HEIGHT, KBD_WIDTH+KEY_WIDTH+1, 0, int(width/2)-int(KBD_WIDTH/2))
         self.candidates = self.build_candidate()
 
     def build_candidate(self):
@@ -98,11 +98,11 @@ class Trainer:
         for h in hands:
             for i in range(0, len(steps)):
                 if steps[i]:
-                    candidates = candidates + "".join(char_set[i][h][0])
+                    candidates = candidates + "".join([c for c in char_set[i][h][0] if c != '　'])
                     if self.args.normal_shift:
-                        candidates = candidates + "".join(char_set[i][h][1])
+                        candidates = candidates + "".join([c for c in char_set[i][h][1] if c != '　'])
                     if self.args.cross_shift:
-                        candidates = candidates + "".join(char_set[i][h][2])
+                        candidates = candidates + "".join([c for c in char_set[i][h][2] if c != '　'] )
         return candidates
 
     def draw_keyboard(self, target_char):
@@ -124,7 +124,7 @@ class Trainer:
                 self.kbd_win.addch(y_1, x_1, char_set[row][0][shift_state][col])
 
         # 右
-        for col in range(0, KEY_N_COL):
+        for col in range(0, KEY_N_COL+1):
             for row in range(0, KEY_N_ROW-1):
                 (y_1, x_1) = (row*KEY_HEIGHT, KEY_N_COL*KEY_WIDTH+KBD_CENTER_WIDTH+col*KEY_WIDTH)
                 (y_2, x_2) = ((row+1)*KEY_HEIGHT, KEY_N_COL*KEY_WIDTH+KBD_CENTER_WIDTH+(col+1)*KEY_WIDTH)
@@ -132,7 +132,7 @@ class Trainer:
 
                 rectangle(self.kbd_win, y_1, x_1, y_2 - 1, x_2 - 1)
 
-
+        # シフトキー部分の□を描画
         (l_y_1, l_x_1) = (3*KEY_HEIGHT, (KEY_N_COL-1)*KEY_WIDTH+0*KEY_WIDTH)
         (l_y_2, l_x_2) = (4*KEY_HEIGHT, (KEY_N_COL-1)*KEY_WIDTH+1*KEY_WIDTH)
 
@@ -143,6 +143,7 @@ class Trainer:
 
         rectangle(self.kbd_win, r_y_1, r_x_1, r_y_2-1, r_x_2-1)
 
+        # シフトキーをハイライト表示
         if shift_state == 0:
             self.kbd_win.addch(l_y_1+1, l_x_1+1, '　', curses.A_NORMAL)
             self.kbd_win.addch(r_y_1+1, r_x_1+1, '　', curses.A_NORMAL)
@@ -154,11 +155,11 @@ class Trainer:
             self.kbd_win.addch(l_y_1+1, l_x_1+1, '　', curses.A_NORMAL)
 
 
-        for col in range(0, KEY_N_COL):
-            for row in range(0, KEY_N_ROW-1):
+        for row in range(0, KEY_N_ROW-1):
+            col_range = range(0, KEY_N_COL+1) if row == 1 else range(0, KEY_N_COL)
+            for col in col_range:
                 (y, x) = (row*KEY_HEIGHT+1, KEY_N_COL*KEY_WIDTH+KBD_CENTER_WIDTH+col*KEY_WIDTH+1)
                 char = char_set[row][1][shift_state][col]
-
                 self.kbd_win.addch(y, x, char)
 
         if target_char in char_map:
@@ -208,7 +209,8 @@ class Trainer:
             if now_char == ch:
                 self.win.addch(ANSWER_ROW, pos*2, ch)
             else:
-                self.win.addch(ANSWER_ROW, pos*2, ch,curses.A_REVERSE)
+                curses.beep()
+                self.win.addch(ANSWER_ROW, pos*2, ch, curses.A_REVERSE)
 
             pos += 1
             self.win.refresh()
