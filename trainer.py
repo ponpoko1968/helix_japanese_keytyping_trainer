@@ -258,15 +258,13 @@ class Trainer:
 
             self.win.addch(QUESTION_ROW, pos*2, now_char)
             missed = 0
-            if now_char == ch:
+            if now_char == ch:  # 正解
                 self.win.addch(ANSWER_ROW, pos*2, ch)
-            else:
+            else:               #  間違い
                 curses.beep()
                 missed_count += 1
                 missed = 1
-                #self.win.addch(ANSWER_ROW, pos*2, ch,  curses.A_REVERSE)
-                #self.win.addch(ANSWER_ROW, pos*2, ch,  curses.COLOR_RED)
-                self.win.addstr(ANSWER_ROW, pos*2, ch,  curses.color_pair(1)|curses.A_REVERSE)
+                self.win.addstr(ANSWER_ROW, pos*2, ch,  curses.color_pair(3)|curses.A_REVERSE)
 
             pos += 1
             self.win.refresh()
@@ -351,11 +349,14 @@ if __name__ == '__main__':
             return -1, "screen width too small"
         curses.curs_set(0)
         curses.start_color()
-        curses.init_color(1, 240*4, 175*4,0 )
+        curses.init_color(1, int(0x84/0xff*1000), int(0xff/0xff*1000), int(0xff/0xff*1000))
         curses.init_pair(1, 1, curses.COLOR_BLACK)
 
-        curses.init_color(2, 0, 175*4, 240*4)
+        curses.init_color(2, int(0xcc/0xff*1000), int(0xff/0xff*1000), int(0x90/0xff*1000))
         curses.init_pair(2, 2, curses.COLOR_BLACK)
+
+        curses.init_color(3, int(0xff/0xff*1000), int(0x3d/0xff*1000), int(0x00/0xff*1000))
+        curses.init_pair(3, 3, curses.COLOR_WHITE)
 
         stdscr.refresh()
 
