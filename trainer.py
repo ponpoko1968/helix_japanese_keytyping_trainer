@@ -116,14 +116,20 @@ class Trainer:
         steps = [self.args.upper, self.args.middle, self.args.lower]
         candidates = ""
         for h in hands:
+            if h == 0:
+                normal = 1
+                cross = 2
+            else:
+                normal = 2
+                cross = 1
             for i in range(0, len(steps)):
                 if steps[i]:
                     if not self.args.no_shift:
                         candidates = candidates + "".join([c for c in char_set[i][h][0] if c != '　'])
                     if self.args.normal_shift:
-                        candidates = candidates + "".join([c for c in char_set[i][h][1] if c != '　'])
+                        candidates = candidates + "".join([c for c in char_set[i][h][normal] if c != '　'])
                     if self.args.cross_shift:
-                        candidates = candidates + "".join([c for c in char_set[i][h][2] if c != '　'] )
+                        candidates = candidates + "".join([c for c in char_set[i][h][cross] if c != '　'] )
         return candidates
 
     def draw_keyboard(self, target_char):
