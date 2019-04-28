@@ -227,11 +227,16 @@ class Trainer:
         session_started = datetime.now()
         missed_count = 0
         char_stats = dict()
+        (_, width) = self.win.getmaxyx()
+
         while True:
+            if char_count > self.args.n_chars:
+                break
+
             char_count += 1
+
             if pos >= len(question):
                 pos = 0
-                (_, width) = self.win.getmaxyx()
                 for col in range(0, width):
                     self.win.addch(QUESTION_ROW, col, ' ')
                     self.win.addch(ANSWER_ROW, col, ' ')
@@ -279,6 +284,9 @@ class Trainer:
                                             elapsed=cs.elapsed+char_elapsed)
             self.win.addstr(ANSWER_ROW+2, 0,"AVG={:04.2f}".format(chars_per_sec))
             self.win.addstr(ANSWER_ROW+3, 0,"MISS={:n}".format(missed_count))
+            bar = "".join(['X' for _ in range(0,int(width*char_count/self.args.n_chars - 1))])
+            bar2 = "".join(['-' for _ in range(width-len(bar) - 2)])
+            self.win.addstr(ANSWER_ROW+4, 0, '['+bar+bar2+']',curses.color_pair(1))
 
         session_ended = datetime.now()
         time_diff = (session_ended - session_started)
@@ -318,7 +326,7 @@ def parse_args(parser):
                         help='クロスシフトの音を追加')
     parser.add_argument('-A', '--all-chars', dest='all_chars', action='store_true', default=False,
                         help='すべての音を追加')
-    parser.add_argument('-n', '--number-words', dest='n_words', type=int, default=10,
+    parser.add_argument('-n', '--number-chars', dest='n_chars', type=int, default=100,
                         help='練習する語数')
     parser.add_argument('-o', '--output-dir', dest='out_dir', type=str, default='./logs',
                         help='ログの出力先')
@@ -362,6 +370,19 @@ if __name__ == '__main__':
 
         return Trainer(stdscr, args).run()
 
+    def print_stats(result):
+        stats=result['char_stats']
+        if len(stats)>=3:
+
+            print('誤打鍵数')
+            for k, v in  sorted(stats.items(), key=lambda stat: stat[1][1], reverse=True)[0:3]:
+                print("「{char}」{error:n}".format(char=k, error=v[1]))
+
+            print('反応時間')
+            for k, v in  sorted(stats.items(), key=lambda stat: stat[1][2]/stat[1][0], reverse=True)[0:3]:
+                print("「{char}」{error:n}秒".format(char=k, error=v[2]/v[0]))
+
+
 
     def main():
         logger.debug("started")
@@ -375,7 +396,7 @@ if __name__ == '__main__':
         # save_colors = [curses.color_content(i) for i in range(curses.COLORS)]
 
         try:
-            code, msg = curses.wrapper(winmain, args)
+            code, result = curses.wrapper(winmain, args)
         except Exception as exp:
             print(exp)
             exit(-1)
@@ -384,7 +405,7 @@ if __name__ == '__main__':
         #     curses.init_color(i, *save_colors[i])
 
         if code < 0:
-            print(msg)
+            print(result)
             exit(code)
 
         path =  Path(args.out_dir)
@@ -393,10 +414,10 @@ if __name__ == '__main__':
             filename = datetime.now().strftime('%Y-%m-%d_%H-%M-%S') + ".json"
             file_path = os.path.join(args.out_dir, filename)
             with open(file_path,'w') as file:
-                json.dump(msg, file)
+                json.dump(result, file, ensure_ascii=False, indent=4)
         else:
             print("{file} not exists".format(file=args.out_dir), file=sys.stderr)
+        print_stats(result)
 
-        print(json.dumps(msg, indent=4, ensure_ascii=False))
 
     main()
