@@ -251,6 +251,11 @@ class Trainer:
                 char_stats[now_char] = CharStat(occur=0, missed=0, elapsed=0.0)
             self.draw_keyboard(now_char)
             self.kbd_win.refresh()
+            if pos > 0:
+                prev_char = question[pos-1]
+                self.win.addstr(QUESTION_ROW, (pos-1)*2, prev_char)
+            self.win.addstr(QUESTION_ROW, pos*2, now_char, curses.A_REVERSE|curses.color_pair(2))
+            self.win.addstr(ANSWER_ROW, pos*2, '　', curses.A_UNDERLINE|curses.color_pair(2))
             char_started = datetime.now()
             ch = self.win.get_wch(ANSWER_ROW, pos*2)
             char_ended = datetime.now()
@@ -261,7 +266,7 @@ class Trainer:
             if ord(ch) == curses.ascii.BEL:
                 break
 
-            self.win.addch(QUESTION_ROW, pos*2, now_char)
+
             missed = 0
             if now_char == ch:  # 正解
                 self.win.addch(ANSWER_ROW, pos*2, ch)
@@ -371,16 +376,24 @@ if __name__ == '__main__':
         return Trainer(stdscr, args).run()
 
     def print_stats(result):
-        stats=result['char_stats']
-        if len(stats)>=3:
+        elapsed = result['elapsed']
+        count = result['count']
+        print("打鍵数:{:10n}".format(count))
+        print("セッション:{:10n}秒".format(elapsed))
+        if count > 0:
+            print("平均反応時間{:10.3n}秒".format(elapsed/count))
 
-            print('誤打鍵数')
+        stats = result['char_stats']
+        if len(stats) >= 3:
+
+            print('誤打鍵数ワースト３')
             for k, v in  sorted(stats.items(), key=lambda stat: stat[1][1], reverse=True)[0:3]:
-                print("「{char}」{error:n}".format(char=k, error=v[1]))
+                print("「{char}」{error:10n}".format(char=k, error=v[1]))
 
-            print('反応時間')
-            for k, v in  sorted(stats.items(), key=lambda stat: stat[1][2]/stat[1][0], reverse=True)[0:3]:
-                print("「{char}」{error:n}秒".format(char=k, error=v[2]/v[0]))
+            if not [item for item in stats.items() if item[1][0] < 1]:  # ゼロ除算
+                print('平均反応時間ワースト3')
+                for k, v in  sorted(stats.items(), key=lambda stat: stat[1][2]/stat[1][0], reverse=True)[0:3]:
+                    print("「{char}」{error:10.3n}秒".format(char=k, error=v[2]/v[0]))
 
 
 
